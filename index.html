@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>AppLaunch24 – ابنِ جمهورك</title>
+<style>
+:root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);
+--bg:#f4f6fb;--card:#fff;--text:#14182a;--muted:#5d6580;--line:#dde2f0;--accent:#3b5bdb;--accent2:#12b886;--chip:#e8ecfb}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0a0e1e;--card:#161c33;--text:#eef1ff;--muted:#9aa3c4;--line:#273056;--accent:#6c8cff;--accent2:#38d9a9;--chip:#232c52}}
+:root[data-theme="dark"]{--bg:#0a0e1e;--card:#161c33;--text:#eef1ff;--muted:#9aa3c4;--line:#273056;--accent:#6c8cff;--accent2:#38d9a9;--chip:#232c52}
+*{box-sizing:border-box}html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--text);font-family:Tahoma,"Segoe UI",Arial,sans-serif;line-height:1.7}
+.wrap{max-width:1100px;margin:auto;padding:16px}
+header{display:flex;align-items:center;gap:12px;flex-wrap:wrap;justify-content:space-between}
+.brand{display:flex;align-items:center;gap:10px}
+.logo{width:48px;height:48px;border-radius:14px;background:linear-gradient(135deg,var(--accent),var(--accent2));display:grid;place-items:center;color:#fff;font-weight:700;font-size:20px}
+.brand h1{margin:0;font-size:20px}.brand p{margin:0;color:var(--muted);font-size:13px}
+.actions{display:flex;gap:8px;flex-wrap:wrap}
+button,.btn{font:inherit;cursor:pointer;border-radius:999px;border:1px solid var(--line);background:var(--card);color:var(--text);padding:9px 18px;text-decoration:none;display:inline-block}
+.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+.green{background:var(--accent2);border-color:var(--accent2);color:#06231a;font-weight:700}
+.hero{margin-top:18px;background:var(--card);border:1px solid var(--line);border-radius:22px;padding:20px}
+.hero h2{margin:0 0 4px;font-size:22px}.hero p{margin:0 0 14px;color:var(--muted)}
+.filters{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+input,select,textarea{font:inherit;width:100%;padding:11px 14px;border-radius:14px;border:1px solid var(--line);background:var(--bg);color:var(--text)}
+#q{grid-column:1/-1}
+h3.sec{margin:26px 0 10px;font-size:17px;display:flex;justify-content:space-between;color:var(--text)}
+h3.sec small{color:var(--muted);font-weight:400}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(290px,1fr));gap:14px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:20px;padding:16px;display:flex;flex-direction:column;gap:8px}
+.card.feat{border-color:var(--accent)}
+.top{display:flex;gap:12px;align-items:center}
+.ico{width:60px;height:60px;border-radius:16px;object-fit:cover;background:var(--chip);flex:none;display:grid;place-items:center;font-size:24px;overflow:hidden}
+.ico img{width:100%;height:100%;object-fit:cover}
+.card h4{margin:0;font-size:16px}
+.tags{display:flex;gap:6px;flex-wrap:wrap}
+.tag{background:var(--chip);border-radius:999px;padding:1px 10px;font-size:12px;color:var(--muted)}
+.card p{margin:0;color:var(--muted);font-size:14px;flex:1}
+.row{display:flex;gap:8px;flex-wrap:wrap}
+.row .btn,.row button{padding:7px 14px;font-size:13px}
+.empty{text-align:center;color:var(--muted);padding:40px 10px;background:var(--card);border:1px dashed var(--line);border-radius:20px}
+dialog{border:1px solid var(--line);border-radius:22px;background:var(--card);color:var(--text);width:min(520px,94vw);padding:20px}
+dialog::backdrop{background:rgba(0,0,0,.55)}
+dialog h3{margin-top:0}
+label{display:block;font-size:13px;color:var(--muted);margin:10px 0 3px}
+.msg{font-size:13px;color:var(--muted);margin-top:8px}
+.ico.ph{background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;font-weight:700}
+.tag.new{background:var(--accent2);color:#06231a;font-weight:700}
+#polLink,#admLink{background:none;border:none;color:var(--accent);padding:0;font-size:13px}
+dialog ul{padding-inline-start:20px;color:var(--muted);font-size:14px}
+.steps{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;margin-top:18px}
+.step{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:14px 16px;display:flex;gap:12px;align-items:flex-start}
+.step b{flex:none;width:30px;height:30px;border-radius:50%;background:var(--accent);color:#fff;display:grid;place-items:center}
+.step span{font-size:14px;color:var(--muted)}.step span strong{display:block;color:var(--text);font-size:15px}
+.step a{color:var(--accent)}
+footer{margin:30px 0 10px;text-align:center;color:var(--muted);font-size:13px}
+</style>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="firebase-config.js"></script>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <div class="brand"><div class="logo">A</div><div><h1 id="siteName">AppLaunch24 – ابنِ جمهورك</h1><p>انشر تطبيقك أولًا، واكسب مستخدمين، ثم انتقل إلى المتجر الرسمي</p></div></div>
+  <div class="actions">
+    <a class="btn primary" id="createBtn" href="#" target="_blank" rel="noopener">أنشئ تطبيقك</a>
+    <button class="green" id="submitBtn">＋ ارفع تطبيقك</button>
+    <button id="themeBtn" aria-label="الوضع">◐</button>
+  </div>
+</header>
+
+<section class="hero">
+  <h2>اكتشف تطبيقات عربية جديدة</h2>
+  <p>مخصص للتطبيقات المبنية بـ AppCreator24 فقط، ومرحّب بكل التطبيقات حتى لو لم يكن لديها مستخدمون بعد.</p>
+  <p id="stat" style="font-weight:700;color:var(--accent2)"></p>
+  <div class="filters">
+    <input id="q" type="search" placeholder="ابحث عن التطبيقات بالاسم">
+    <select id="cat"><option value="">الفئة: الجميع</option></select>
+    <select id="lang"><option value="">اللغة: الجميع</option></select>
+  </div>
+</section>
+
+<section class="steps">
+  <div class="step"><b>1</b><span><strong>أنشئ تطبيقك</strong>ابنِ تطبيقك مجانًا على <a id="createLink" href="#" target="_blank" rel="noopener">AppCreator24</a> دون أي خبرة برمجية.</span></div>
+  <div class="step"><b>2</b><span><strong>احصل على رابط التحميل</strong>احصل على رابط تحميل تطبيقك المبني بالمنصة.</span></div>
+  <div class="step"><b>3</b><span><strong>ارفعه هنا</strong>اضغط «ارفع تطبيقك» وأضف بياناته، فيظهر في المتجر فورًا حتى لو لم يكن له مستخدمون.</span></div>
+</section>
+
+<div id="featBox" hidden>
+  <h3 class="sec">مميز <small>تطبيقات مختارة</small></h3>
+  <div class="grid" id="feat"></div>
+</div>
+<h3 class="sec">جميع التطبيقات <small id="count"></small></h3>
+<div class="grid" id="list"></div>
+<div class="empty" id="empty" hidden>لا توجد تطبيقات مطابقة بعد. كن أول من يرفع تطبيقه!</div>
+<footer><span id="foot"></span> · <button id="polLink">سياسة الاستخدام</button> · <button id="admLink">المدير</button></footer>
+</div>
+
+<dialog id="dlg">
+  <h3>رفع تطبيق جديد</h3>
+  <div id="formBox">
+    <label>اسم التطبيق *</label><input id="fName" maxlength="60">
+    <label>رابط تحميل التطبيق *</label><input id="fLink" type="url" placeholder="https://" dir="ltr">
+    <div class="msg">الصق هنا رابط صفحة تحميل تطبيقك: من قائمة تطبيقك في AppCreator24 اضغط «حمّل التطبيق» ثم انسخ الرابط من شريط العنوان، أو خذه من قسم «مشاركة».</div>
+    <label>رابط صورة الأيقونة (اختياري)</label><input id="fIcon" type="url" placeholder="https://" dir="ltr">
+    <div class="msg">رابط مباشر للصورة (ينتهي غالبًا بـ png أو jpg). إن تركته فارغًا تُستخدم أيقونة تلقائية بحرف اسم التطبيق.</div>
+    <label>الفئة</label><select id="fCat"></select>
+    <label>اللغة</label><select id="fLang"></select>
+    <label>وصف قصير *</label><textarea id="fDesc" rows="3" maxlength="300"></textarea>
+    <label style="display:flex;gap:8px;align-items:center;margin-top:14px;color:var(--text)"><input type="checkbox" id="fOwn" style="width:auto">أؤكد أن تطبيقي مبني بواسطة AppCreator24</label>
+    <div class="row" style="margin-top:14px"><button class="primary" id="fSend">نشر التطبيق</button><button id="fClose">إغلاق</button></div>
+    <div class="msg" id="fMsg"></div>
+  </div>
+</dialog>
+
+<dialog id="pol">
+  <h3>سياسة الاستخدام</h3>
+  <ul>
+    <li>المتجر مخصص للتطبيقات المبنية بواسطة AppCreator24 فقط.</li>
+    <li>يجب أن يقود الرابط إلى تطبيقك الحقيقي وأن يكون آمنًا.</li>
+    <li>يُمنع المحتوى المخالف للقانون أو المسيء أو المضلِّل، وكذلك التطبيقات المنسوخة من أصحابها دون إذن.</li>
+    <li>صاحب التطبيق مسؤول عن محتواه، وتظهر التطبيقات فور رفعها.</li>
+    <li>يحق لإدارة المتجر حذف أي تطبيق مخالف دون إشعار مسبق.</li>
+    <li>المنصة مستقلة وغير تابعة رسميًا لـ AppCreator24.</li>
+  </ul>
+  <button class="primary" id="polClose">إغلاق</button>
+</dialog>
+
+<script>
+// ===== إعدادات يمكن تعديلها =====
+const CONFIG = {
+  SITE_NAME: "AppLaunch24 – ابنِ جمهورك",
+  REFERRAL_URL: "https://www.appcreator24.com/afi/1251938", // رابط الإحالة
+  ALLOWED_HOSTS: ["appcreator24.com"],
+  CATEGORIES: ["اجتماعي","تعليمي","أدوات","ترفيه","أخبار","تسوق","صحة","ديني","أخرى"],
+  LANGUAGES: ["العربية","الإنجليزية","الفرنسية","الإسبانية"]
+};
+// ================================
+const $=id=>document.getElementById(id);
+let apps=[],db=null,user=null,isOwner=false;
+document.title=CONFIG.SITE_NAME;$("siteName").textContent=CONFIG.SITE_NAME;
+$("createBtn").href=CONFIG.REFERRAL_URL;$("createLink").href=CONFIG.REFERRAL_URL;
+$("foot").textContent="© "+new Date().getFullYear()+" "+CONFIG.SITE_NAME+" — منصة مستقلة غير تابعة رسميًا لـ AppCreator24";
+function fill(sel,arr,first){sel.innerHTML=(first?'<option value="">'+first+'</option>':'')+arr.map(x=>'<option>'+x+'</option>').join('')}
+fill($("cat"),CONFIG.CATEGORIES,"الفئة: الجميع");fill($("lang"),CONFIG.LANGUAGES,"اللغة: الجميع");
+fill($("fCat"),CONFIG.CATEGORIES);fill($("fLang"),CONFIG.LANGUAGES);
+
+$("themeBtn").onclick=()=>{const r=document.documentElement;const dark=getComputedStyle(r).getPropertyValue("--bg").trim()==="#0a0e1e";r.setAttribute("data-theme",dark?"light":"dark")};
+
+function safeUrl(u){try{const x=new URL(u);return(x.protocol==="https:"||x.protocol==="http:")?x.href:""}catch(e){return""}}
+function card(a,feat){
+  const d=document.createElement("div");d.className="card"+(feat?" feat":"");
+  const top=document.createElement("div");top.className="top";
+  const ic=document.createElement("div");ic.className="ico";
+  const iu=safeUrl(a.icon);
+  const ph=()=>{ic.replaceChildren();ic.textContent=(a.name||"?").trim().charAt(0).toUpperCase();ic.classList.add("ph")};
+  if(iu){const im=document.createElement("img");im.src=iu;im.alt="";im.onerror=ph;ic.appendChild(im)}else ph();
+  const t=document.createElement("div");
+  const h=document.createElement("h4");h.textContent=a.name;
+  const tg=document.createElement("div");tg.className="tags";
+  [a.cat,a.lang].forEach(x=>{if(x){const s=document.createElement("span");s.className="tag";s.textContent=x;tg.appendChild(s)}});
+  if(a.created&&Date.now()-a.created<7*864e5){const n=document.createElement("span");n.className="tag new";n.textContent="جديد";tg.prepend(n)}
+  t.append(h,tg);top.append(ic,t);
+  const p=document.createElement("p");p.textContent=a.desc;
+  const r=document.createElement("div");r.className="row";
+  const o=document.createElement("a");o.className="btn primary";o.textContent="فتح التطبيق";o.href=safeUrl(a.link)||"#";o.target="_blank";o.rel="noopener noreferrer";
+  r.appendChild(o);
+  const sh=document.createElement("button");sh.textContent="مشاركة";
+  sh.onclick=async()=>{const u=safeUrl(a.link);try{if(navigator.share){await navigator.share({title:a.name,text:a.name+" – "+CONFIG.SITE_NAME,url:u})}else{await navigator.clipboard.writeText(u);sh.textContent="تم النسخ ✓"}}catch(e){}};
+  r.appendChild(sh);
+  if(isOwner){
+    const f=document.createElement("button");f.textContent=a.featured?"إلغاء التمييز":"تمييز";
+    f.onclick=()=>db.collection("apps").doc(a.id).update({featured:!a.featured}).catch(()=>{});
+    const x=document.createElement("button");x.textContent="حذف";
+    x.onclick=()=>{if(confirm("حذف هذا التطبيق؟"))db.collection("apps").doc(a.id).delete().catch(()=>{})};
+    r.append(f,x);
+  }
+  d.append(top,p,r);return d;
+}
+function render(){
+  const q=$("q").value.trim().toLowerCase(),c=$("cat").value,l=$("lang").value;
+  const all=apps.filter(a=>(!q||a.name.toLowerCase().includes(q))&&(!c||a.cat===c)&&(!l||a.lang===l));
+  const feat=all.filter(a=>a.featured);
+  $("featBox").hidden=!feat.length;
+  $("feat").replaceChildren(...feat.map(a=>card(a,true)));
+  $("list").replaceChildren(...all.map(a=>card(a,false)));
+  $("empty").hidden=all.length>0;
+  $("count").textContent=all.length+" / "+apps.length;$("stat").textContent=apps.length?(apps.length+" تطبيق منشور حتى الآن"):"";
+}
+["q","cat","lang"].forEach(i=>$(i).addEventListener("input",render));
+
+$("submitBtn").onclick=()=>{$("fMsg").textContent=db?"":"الرفع غير متاح حاليًا.";$("dlg").showModal()};
+$("fClose").onclick=()=>$("dlg").close();
+$("polLink").onclick=()=>$("pol").showModal();$("polClose").onclick=()=>$("pol").close();
+$("fSend").onclick=async()=>{
+  const m=$("fMsg");
+  if(!db){m.textContent="الرفع غير متاح حاليًا. أعد المحاولة لاحقًا.";return}
+  const name=$("fName").value.trim(),link=safeUrl($("fLink").value.trim()),desc=$("fDesc").value.trim();
+  if(!name||!link||!desc){m.textContent="يرجى ملء الاسم والرابط والوصف (الرابط يجب أن يبدأ بـ https).";return}
+  const h=new URL(link).hostname.replace(/^www\./,"");
+  if(!CONFIG.ALLOWED_HOSTS.some(x=>h===x||h.endsWith("."+x))||!/^\/app\d+/i.test(new URL(link).pathname)){m.textContent="هذا الرابط غير مدعوم. استخدم رابط تطبيقك المباشر من AppCreator24 (يبدأ بـ appcreator24.com/app...).";return}
+  if(!$("fOwn").checked){m.textContent="يرجى تأكيد أن التطبيق مبني بواسطة AppCreator24.";return}
+  $("fSend").disabled=true;
+  try{
+    const id="a"+Date.now().toString(36)+Math.random().toString(36).slice(2,6);
+    await db.collection("apps").doc(id).set({name,link,icon:safeUrl($("fIcon").value.trim()),cat:$("fCat").value,lang:$("fLang").value,desc,featured:false,created:Date.now()});
+    ["fName","fLink","fIcon","fDesc"].forEach(i=>$(i).value="");
+    m.textContent="تم نشر تطبيقك بنجاح ✓";setTimeout(()=>{$("dlg").close();m.textContent=""},1200);
+  }catch(e){m.textContent="تعذّر النشر. حاول مرة أخرى."}
+  $("fSend").disabled=false;
+};
+
+let auth=null;
+$("admLink").onclick=async()=>{
+  if(!auth)return;
+  if(auth.currentUser){await auth.signOut();return}
+  const e=prompt("البريد الإلكتروني للمدير"),p=e&&prompt("كلمة المرور");
+  if(!p)return;
+  try{await auth.signInWithEmailAndPassword(e,p)}catch(x){alert("فشل تسجيل الدخول")}
+};
+(function(){
+  const c=window.FIREBASE_CONFIG;
+  if(!c||c.apiKey==="YOUR_API_KEY"||typeof firebase==="undefined"){$("stat").textContent="⚠️ لم يتم ضبط Firebase بعد (راجع ملف README)";return}
+  try{
+    firebase.initializeApp(c);
+    db=firebase.firestore();auth=firebase.auth();
+    auth.onAuthStateChanged(u=>{isOwner=!!u&&u.email===window.ADMIN_EMAIL;$("admLink").textContent=u?"خروج المدير":"المدير";render()});
+    db.collection("apps").onSnapshot(s=>{
+      apps=s.docs.map(d=>({id:d.id,...d.data()})).filter(a=>a.name&&a.link).sort((a,b)=>(b.created||0)-(a.created||0));
+      render();
+    },()=>{$("stat").textContent="تعذّر تحميل التطبيقات"});
+  }catch(e){}
+})();
+render();
+</script>
+</body>
+</html>
