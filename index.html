@@ -100,7 +100,7 @@ footer{margin:30px 0 10px;text-align:center;color:var(--muted);font-size:13px}
 </div>
 
 <dialog id="dlg">
-  <h3>رفع تطبيق جديد</h3>
+  <h3 id="dTitle">رفع تطبيق جديد</h3>
   <div id="formBox">
     <label>اسم التطبيق *</label><input id="fName" maxlength="60">
     <label>رابط تحميل التطبيق *</label><input id="fLink" type="url" placeholder="https://" dir="ltr">
@@ -176,7 +176,10 @@ function card(a,feat){
     f.onclick=()=>db.collection("apps").doc(a.id).update({featured:!a.featured}).catch(()=>{});
     const x=document.createElement("button");x.textContent="حذف";
     x.onclick=()=>{if(confirm("حذف هذا التطبيق؟"))db.collection("apps").doc(a.id).delete().catch(()=>{})};
-    r.append(f,x);
+    const ed=document.createElement("button");ed.textContent="تعديل";ed.onclick=()=>openEdit(a);
+    r.append(ed,f,x);
+  }else{
+    const eb=document.createElement("button");eb.textContent="تعديل (لصاحب التطبيق)";eb.onclick=()=>ownerEdit(a);r.append(eb);
   }
   d.append(top,p,r);return d;
 }
@@ -192,6 +195,29 @@ function render(){
 }
 ["q","cat","lang"].forEach(i=>$(i).addEventListener("input",render));
 
+function newKey(){const A="ABCDEFGHJKLMNPQRSTUVWXYZ23456789",b=new Uint8Array(16);crypto.getRandomValues(b);let k="";b.forEach(v=>k+=A[v%32]);return k}
+function myKeys(){try{return JSON.parse(localStorage.getItem("al24keys")||"{}")}catch(e){return{}}}
+function saveKey(id,k){try{const o=myKeys();o[id]=k;localStorage.setItem("al24keys",JSON.stringify(o))}catch(e){}}
+function ownerEdit(a){
+  let k=myKeys()[a.id]||prompt("أدخل رمز التعديل الخاص بتطبيقك (ظهر لك عند النشر)");
+  if(!k)return;openEdit(a,k.trim().toUpperCase());
+}
+let editId=null,editKey=null;
+function resetForm(){
+  editId=null;editKey=null;
+  ["fName","fLink","fIcon","fDesc"].forEach(i=>$(i).value="");
+  $("fOwn").checked=false;$("fOwn").parentElement.hidden=false;
+  $("dTitle").textContent="رفع تطبيق جديد";$("fSend").textContent="نشر التطبيق";$("fMsg").textContent="";
+}
+function openEdit(a,key){
+  resetForm();editId=a.id;editKey=key||null;
+  $("fName").value=a.name||"";$("fLink").value=a.link||"";$("fIcon").value=a.icon||"";
+  $("fCat").value=a.cat||CONFIG.CATEGORIES[0];$("fLang").value=a.lang||CONFIG.LANGUAGES[0];$("fDesc").value=a.desc||"";
+  $("fOwn").parentElement.hidden=true;
+  $("dTitle").textContent="تعديل التطبيق";$("fSend").textContent="حفظ التعديلات";
+  $("dlg").showModal();
+}
+$("dlg").addEventListener("close",resetForm);
 $("submitBtn").onclick=()=>{$("fMsg").textContent=db?"":"الرفع غير متاح حاليًا.";$("dlg").showModal()};
 $("fClose").onclick=()=>$("dlg").close();
 $("polLink").onclick=()=>$("pol").showModal();$("polClose").onclick=()=>$("pol").close();
@@ -202,14 +228,30 @@ $("fSend").onclick=async()=>{
   if(!name||!link||!desc){m.textContent="يرجى ملء الاسم والرابط والوصف (الرابط يجب أن يبدأ بـ https).";return}
   const h=new URL(link).hostname.replace(/^www\./,"");
   if(!CONFIG.ALLOWED_HOSTS.some(x=>h===x||h.endsWith("."+x))||!/^\/app\d+/i.test(new URL(link).pathname)){m.textContent="هذا الرابط غير مدعوم. استخدم رابط تطبيقك المباشر من AppCreator24 (يبدأ بـ appcreator24.com/app...).";return}
-  if(!$("fOwn").checked){m.textContent="يرجى تأكيد أن التطبيق مبني بواسطة AppCreator24.";return}
+  if(!editId&&!$("fOwn").checked){m.textContent="يرجى تأكيد أن التطبيق مبني بواسطة AppCreator24.";return}
   $("fSend").disabled=true;
   try{
-    const id="a"+Date.now().toString(36)+Math.random().toString(36).slice(2,6);
-    await db.collection("apps").doc(id).set({name,link,icon:safeUrl($("fIcon").value.trim()),cat:$("fCat").value,lang:$("fLang").value,desc,featured:false,created:Date.now()});
-    ["fName","fLink","fIcon","fDesc"].forEach(i=>$(i).value="");
-    m.textContent="تم نشر تطبيقك بنجاح ✓";setTimeout(()=>{$("dlg").close();m.textContent=""},1200);
-  }catch(e){m.textContent="تعذّر النشر. حاول مرة أخرى."}
+    const data={name,link,icon:safeUrl($("fIcon").value.trim()),cat:$("fCat").value,lang:$("fLang").value,desc};
+    if(editId){
+      if(isOwner){await db.collection("apps").doc(editId).update(data)}
+      else{
+        const b=db.batch();
+        b.update(db.collection("apps").doc(editId),data);
+        b.set(db.collection("proofs").doc(editId),{key:editKey});
+        await b.commit();saveKey(editId,editKey);
+      }
+      m.textContent="تم حفظ التعديلات ✓";setTimeout(()=>$("dlg").close(),900);
+    }else{
+      const id="a"+Date.now().toString(36)+Math.random().toString(36).slice(2,6),key=newKey();
+      const b=db.batch();
+      b.set(db.collection("apps").doc(id),{...data,featured:false,created:Date.now()});
+      b.set(db.collection("secrets").doc(id),{key});
+      await b.commit();saveKey(id,key);
+      ["fName","fLink","fIcon","fDesc"].forEach(i=>$(i).value="");$("fOwn").checked=false;
+      try{navigator.clipboard.writeText(key)}catch(e){}
+      m.textContent="تم نشر تطبيقك ✓ رمز تعديل تطبيقك: "+key+" — احتفظ به (نُسخ تلقائيًا)، فهو الطريقة الوحيدة لتعديله لاحقًا.";
+    }
+  }catch(e){m.textContent=editId?(isOwner?"تعذّر الحفظ.":"رمز التعديل غير صحيح. (التطبيقات المنشورة قبل هذا التحديث يعدّلها المدير فقط.)"):"تعذّر النشر. حاول مرة أخرى."}
   $("fSend").disabled=false;
 };
 
