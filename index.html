@@ -47,6 +47,10 @@ label{display:block;font-size:13px;color:var(--muted);margin:10px 0 3px}
 .msg{font-size:13px;color:var(--muted);margin-top:8px}
 .ico.ph{background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;font-weight:700}
 .tag.new{background:var(--accent2);color:#06231a;font-weight:700}
+#gear{position:fixed;bottom:18px;left:18px;width:48px;height:48px;border-radius:50%;background:var(--card);border:1px solid var(--line);color:var(--text);font-size:22px;cursor:pointer;z-index:50;padding:0;box-shadow:0 4px 14px rgba(0,0,0,.35)}
+body.admin #gear{background:var(--accent);color:#fff;border-color:var(--accent)}
+#admBar{display:none;position:sticky;top:0;z-index:40;background:var(--accent);color:#fff;text-align:center;font-size:13px;padding:6px 10px}
+body.admin #admBar{display:block}
 #polLink,#admLink{background:none;border:none;color:var(--accent);padding:0;font-size:13px}
 dialog ul{padding-inline-start:20px;color:var(--muted);font-size:14px}
 .steps{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;margin-top:18px}
@@ -63,6 +67,7 @@ footer{margin:30px 0 10px;text-align:center;color:var(--muted);font-size:13px}
 <script src="firebase-config.js"></script>
 </head>
 <body>
+<div id="admBar">⚙ وضع المدير مفعّل: يمكنك تعديل التطبيقات وتمييزها وحذفها من بطاقاتها</div>
 <div class="wrap">
 <header>
   <div class="brand"><div class="logo">A</div><div><h1 id="siteName">AppLaunch24 – ابنِ جمهورك</h1><p>انشر تطبيقك أولًا، واكسب مستخدمين، ثم انتقل إلى المتجر الرسمي</p></div></div>
@@ -97,6 +102,20 @@ footer{margin:30px 0 10px;text-align:center;color:var(--muted);font-size:13px}
 <h3 class="sec">جميع التطبيقات <small id="count"></small></h3>
 <div class="grid" id="list"></div>
 <div class="empty" id="empty" hidden>لا توجد تطبيقات مطابقة بعد. كن أول من يرفع تطبيقه!</div>
+<button id="gear" title="المدير" aria-label="المدير">⚙</button>
+<dialog id="loginDlg">
+  <h3>دخول المدير</h3>
+  <label>البريد الإلكتروني</label><input id="lMail" type="email" dir="ltr" autocomplete="username">
+  <label>كلمة المرور</label><input id="lPass" type="password" dir="ltr" autocomplete="current-password">
+  <div class="row" style="margin-top:14px"><button class="primary" id="lSend">دخول</button><button id="lClose">إغلاق</button></div>
+  <div class="msg" id="lMsg"></div>
+</dialog>
+<dialog id="codeDlg">
+  <h3>تم نشر تطبيقك ✓</h3>
+  <p style="color:var(--muted);font-size:14px">هذا رمز تعديل تطبيقك. احتفظ به في مكان آمن، فهو الطريقة الوحيدة لتعديل تطبيقك لاحقًا:</p>
+  <input id="cVal" readonly dir="ltr" style="text-align:center;font-size:18px;letter-spacing:2px">
+  <div class="row" style="margin-top:14px"><button class="primary" id="cCopy">نسخ الرمز</button><button id="cClose">تم</button></div>
+</dialog>
 <footer><span id="foot"></span> · <button id="polLink">سياسة الاستخدام</button> · <button id="admLink">المدير</button></footer>
 </div>
 
@@ -183,9 +202,9 @@ function card(a,feat){
   r.appendChild(sh);
   if(isOwner){
     const f=document.createElement("button");f.textContent=a.featured?"إلغاء التمييز":"تمييز";
-    f.onclick=()=>db.collection("apps").doc(a.id).update({featured:!a.featured}).catch(()=>{});
+    f.onclick=()=>db.collection("apps").doc(a.id).update({featured:!a.featured}).catch(e=>alert("تعذّر التنفيذ: "+(e.code||"")));
     const x=document.createElement("button");x.textContent="حذف";
-    x.onclick=()=>{if(confirm("حذف هذا التطبيق؟"))db.collection("apps").doc(a.id).delete().catch(()=>{})};
+    x.onclick=()=>{if(confirm("حذف هذا التطبيق؟"))db.collection("apps").doc(a.id).delete().catch(e=>alert("تعذّر الحذف: "+(e.code||"")))};
     const ed=document.createElement("button");ed.textContent="تعديل";ed.onclick=()=>openEdit(a);
     r.append(ed,f,x);
     const rp=reports[a.id];
@@ -216,6 +235,9 @@ function ownerEdit(a){
   let k=myKeys()[a.id]||prompt("أدخل رمز التعديل الخاص بتطبيقك (ظهر لك عند النشر)");
   if(!k)return;openEdit(a,k.trim().toUpperCase());
 }
+function showCode(k){$("cVal").value=k;$("codeDlg").showModal()}
+$("cCopy").onclick=async()=>{try{await navigator.clipboard.writeText($("cVal").value);$("cCopy").textContent="تم النسخ ✓"}catch(e){$("cVal").select()}};
+$("cClose").onclick=()=>{$("codeDlg").close();$("cCopy").textContent="نسخ الرمز"};
 let reports={},repUnsub=null,repApp=null;
 function reported(){try{return JSON.parse(localStorage.getItem("al24rep")||"{}")}catch(e){return{}}}
 function openReport(a){repApp=a;$("rMsg").textContent="";$("rNote").value="";$("repDlg").showModal()}
@@ -277,20 +299,28 @@ $("fSend").onclick=async()=>{
       b.set(db.collection("secrets").doc(id),{key});
       await b.commit();saveKey(id,key);
       ["fName","fLink","fIcon","fDesc"].forEach(i=>$(i).value="");$("fOwn").checked=false;
-      try{navigator.clipboard.writeText(key)}catch(e){}
-      m.textContent="تم نشر تطبيقك ✓ رمز تعديل تطبيقك: "+key+" — احتفظ به (نُسخ تلقائيًا)، فهو الطريقة الوحيدة لتعديله لاحقًا.";
+      $("dlg").close();showCode(key);
     }
   }catch(e){m.textContent=editId?(isOwner?"تعذّر الحفظ.":"رمز التعديل غير صحيح. (التطبيقات المنشورة قبل هذا التحديث يعدّلها المدير فقط.)"):"تعذّر النشر. حاول مرة أخرى."}
   $("fSend").disabled=false;
 };
 
 let auth=null;
-$("admLink").onclick=async()=>{
+function adminClick(){
   if(!auth)return;
-  if(auth.currentUser){await auth.signOut();return}
-  const e=prompt("البريد الإلكتروني للمدير"),p=e&&prompt("كلمة المرور");
-  if(!p)return;
-  try{await auth.signInWithEmailAndPassword(e,p)}catch(x){alert("فشل تسجيل الدخول")}
+  if(auth.currentUser){if(confirm("تسجيل الخروج من وضع المدير؟"))auth.signOut();return}
+  $("lMsg").textContent="";$("loginDlg").showModal();
+}
+$("admLink").onclick=adminClick;$("gear").onclick=adminClick;
+$("lClose").onclick=()=>$("loginDlg").close();
+$("lSend").onclick=async()=>{
+  const m=$("lMsg");m.textContent="جارٍ الدخول...";
+  try{await auth.signInWithEmailAndPassword($("lMail").value.trim(),$("lPass").value);$("lPass").value="";$("loginDlg").close()}
+  catch(e){
+    const c=e.code||"";
+    m.textContent=c==="auth/unauthorized-domain"?"نطاق الموقع غير مضاف في Firebase (Domaines autorisés).":
+      /invalid-credential|wrong-password|user-not-found|invalid-login/.test(c)?"البريد أو كلمة المرور غير صحيحة.":"تعذّر الدخول ("+(c||"خطأ")+").";
+  }
 };
 (function(){
   const c=window.FIREBASE_CONFIG;
@@ -300,7 +330,7 @@ $("admLink").onclick=async()=>{
     if(window.APPCHECK_SITE_KEY&&firebase.appCheck){try{firebase.appCheck().activate(window.APPCHECK_SITE_KEY,true)}catch(e){}}
     db=firebase.firestore();auth=firebase.auth();
     auth.onAuthStateChanged(u=>{
-      isOwner=!!u&&u.email===window.ADMIN_EMAIL;$("admLink").textContent=u?"خروج المدير":"المدير";
+      isOwner=!!u&&u.email===window.ADMIN_EMAIL;$("admLink").textContent=u?"خروج المدير":"المدير";document.body.classList.toggle("admin",isOwner);
       if(repUnsub){repUnsub();repUnsub=null}reports={};
       if(isOwner){repUnsub=db.collection("reports").onSnapshot(s=>{reports={};s.docs.forEach(d=>{const r=d.data();(reports[r.appId]=reports[r.appId]||[]).push(r.reason+(r.note?": "+r.note:""))});render()},()=>{})}
       render();
