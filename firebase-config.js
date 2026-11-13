@@ -9,4 +9,4 @@ window.FIREBASE_CONFIG = {
 };
 // بريد المدير: يجب أن يكون نفس البريد الذي تنشئه في Authentication > Users
 window.ADMIN_EMAIL = "younassouakka@gmail.com";
-window.APPCHECK_SITE_KEY = "6Lcq9h4uAAAAAO9p58PSEutL21SQPIpRRAaPzAXz";
+//window.APPCHECK_SITE_KEY = "6Lcq9h4uAAAAAO9p58PSEutL21SQPIpRRAaPzAXz";
