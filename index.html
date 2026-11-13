@@ -259,10 +259,15 @@ $("rSend").onclick=async()=>{
   const done=reported();if(done[repApp.id]){m.textContent="سبق أن أبلغت عن هذا التطبيق. شكرًا لك.";return}
   $("rSend").disabled=true;
   try{
-    await db.collection("reports").add({appId:repApp.id,reason:$("rReason").value,note:$("rNote").value.trim().slice(0,200),created:Date.now()});
+    if(!auth.currentUser)await auth.signInAnonymously();
+    const uid=auth.currentUser.uid;
+    await db.collection("reports").doc(repApp.id+"_"+uid).set({appId:repApp.id,reason:$("rReason").value,note:$("rNote").value.trim().slice(0,200),created:Date.now()});
     done[repApp.id]=1;try{localStorage.setItem("al24rep",JSON.stringify(done))}catch(e){}
     m.textContent="وصل بلاغك ✓ شكرًا لك.";setTimeout(()=>$("repDlg").close(),1200);
-  }catch(e){m.textContent="تعذّر إرسال البلاغ. حاول مرة أخرى."}
+  }catch(e){
+    if(e.code==="permission-denied"){done[repApp.id]=1;try{localStorage.setItem("al24rep",JSON.stringify(done))}catch(_){}m.textContent="سبق أن أبلغت عن هذا التطبيق. شكرًا لك."}
+    else m.textContent="تعذّر إرسال البلاغ. حاول مرة أخرى."
+  }
   $("rSend").disabled=false;
 };
 let editId=null,editKey=null;
@@ -320,7 +325,7 @@ $("fSend").onclick=async()=>{
 let auth=null;
 function adminClick(){
   if(!auth)return;
-  if(auth.currentUser){if(confirm("تسجيل الخروج من وضع المدير؟"))auth.signOut();return}
+  if(auth.currentUser&&!auth.currentUser.isAnonymous){if(confirm("تسجيل الخروج من وضع المدير؟"))auth.signOut();return}
   $("lMsg").textContent="";$("loginDlg").showModal();
 }
 $("admLink").onclick=adminClick;$("gear").onclick=adminClick;
@@ -342,7 +347,7 @@ $("lSend").onclick=async()=>{
     if(window.APPCHECK_SITE_KEY&&firebase.appCheck){try{firebase.appCheck().activate(window.APPCHECK_SITE_KEY,true)}catch(e){}}
     db=firebase.firestore();auth=firebase.auth();
     auth.onAuthStateChanged(u=>{
-      isOwner=!!u&&u.email===window.ADMIN_EMAIL;$("admLink").textContent=u?"خروج المدير":"المدير";document.body.classList.toggle("admin",isOwner);
+      isOwner=!!u&&u.email===window.ADMIN_EMAIL;$("admLink").textContent=(u&&!u.isAnonymous)?"خروج المدير":"المدير";document.body.classList.toggle("admin",isOwner);
       if(repUnsub){repUnsub();repUnsub=null}reports={};
       if(isOwner){repUnsub=db.collection("reports").onSnapshot(s=>{reports={};s.docs.forEach(d=>{const r=d.data();(reports[r.appId]=reports[r.appId]||[]).push(r.reason+(r.note?": "+r.note:""))});render()},()=>{})}
       render();
