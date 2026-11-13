@@ -300,7 +300,7 @@ $("fSend").onclick=async()=>{
       else{
         const b=db.batch();
         b.update(db.collection("apps").doc(editId),data);
-        b.set(db.collection("proofs").doc(editId),{key:editKey});
+        b.set(db.collection("proofs").doc(editId),{key:editKey,t:firebase.firestore.FieldValue.serverTimestamp()});
         await b.commit();saveKey(editId,editKey);
       }
       m.textContent="تم حفظ التعديلات ✓";setTimeout(()=>$("dlg").close(),900);
