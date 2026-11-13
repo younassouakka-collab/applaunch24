@@ -344,7 +344,14 @@ $("lSend").onclick=async()=>{
   if(!c||c.apiKey==="YOUR_API_KEY"||typeof firebase==="undefined"){$("stat").textContent="⚠️ لم يتم ضبط Firebase بعد (راجع ملف README)";return}
   try{
     firebase.initializeApp(c);
-    if(window.APPCHECK_SITE_KEY&&firebase.appCheck){try{firebase.appCheck().activate(window.APPCHECK_SITE_KEY,true)}catch(e){}}
+    const acDbg=/[?&]acdebug/.test(location.search);
+    if(window.APPCHECK_SITE_KEY&&firebase.appCheck){
+      try{
+        const ac=firebase.appCheck();
+        ac.activate(new firebase.appCheck.ReCaptchaEnterpriseProvider(window.APPCHECK_SITE_KEY),true);
+        if(acDbg)ac.getToken(true).then(()=>alert("App Check: تم الحصول على الرمز ✓")).catch(e=>alert("App Check خطأ: "+(e.code||e.message||e)));
+      }catch(e){if(acDbg)alert("App Check تعذّر التفعيل: "+(e.code||e.message||e))}
+    }else if(acDbg){alert("App Check غير مفعّل: "+(window.APPCHECK_SITE_KEY?"مكتبة AppCheck غير محمّلة":"APPCHECK_SITE_KEY غير موجود في firebase-config.js"))}
     db=firebase.firestore();try{db.settings({experimentalAutoDetectLongPolling:true,merge:true})}catch(e){}auth=firebase.auth();
     auth.onAuthStateChanged(u=>{
       isOwner=!!u&&u.email===window.ADMIN_EMAIL;$("admLink").textContent=(u&&!u.isAnonymous)?"خروج المدير":"المدير";document.body.classList.toggle("admin",isOwner);
