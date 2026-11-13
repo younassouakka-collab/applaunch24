@@ -181,7 +181,7 @@ const CONFIG = {
 };
 // ================================
 const $=id=>document.getElementById(id);
-let apps=[],db=null,user=null,isOwner=false;
+let apps=[],db=null,user=null,isOwner=false,loaded=false;
 document.title=CONFIG.SITE_NAME;$("siteName").textContent=CONFIG.SITE_NAME;
 $("createBtn").href=CONFIG.REFERRAL_URL;$("createLink").href=CONFIG.REFERRAL_URL;
 $("foot").textContent="© "+new Date().getFullYear()+" "+CONFIG.SITE_NAME+" — منصة مستقلة غير تابعة رسميًا لـ AppCreator24";
@@ -235,7 +235,7 @@ function render(){
   $("featBox").hidden=!feat.length;
   $("feat").replaceChildren(...feat.map(a=>card(a,true)));
   $("list").replaceChildren(...all.map(a=>card(a,false)));
-  $("empty").hidden=all.length>0;
+  $("empty").hidden=all.length>0;$("empty").textContent=loaded?"لا توجد تطبيقات مطابقة بعد. كن أول من يرفع تطبيقه!":"جارٍ تحميل التطبيقات…";
   $("count").textContent=all.length+" / "+apps.length;$("stat").textContent=apps.length?(apps.length+" تطبيق منشور حتى الآن"):"";
 }
 ["q","cat","lang"].forEach(i=>$(i).addEventListener("input",render));
@@ -266,7 +266,7 @@ $("rSend").onclick=async()=>{
     m.textContent="وصل بلاغك ✓ شكرًا لك.";setTimeout(()=>$("repDlg").close(),1200);
   }catch(e){
     if(e.code==="permission-denied"){done[repApp.id]=1;try{localStorage.setItem("al24rep",JSON.stringify(done))}catch(_){}m.textContent="سبق أن أبلغت عن هذا التطبيق. شكرًا لك."}
-    else m.textContent="تعذّر إرسال البلاغ. حاول مرة أخرى."
+    else m.textContent="تعذّر إرسال البلاغ ("+(e.code||"خطأ")+"). حاول مرة أخرى."
   }
   $("rSend").disabled=false;
 };
@@ -345,17 +345,20 @@ $("lSend").onclick=async()=>{
   try{
     firebase.initializeApp(c);
     if(window.APPCHECK_SITE_KEY&&firebase.appCheck){try{firebase.appCheck().activate(window.APPCHECK_SITE_KEY,true)}catch(e){}}
-    db=firebase.firestore();auth=firebase.auth();
+    db=firebase.firestore();try{db.settings({experimentalAutoDetectLongPolling:true,merge:true})}catch(e){}auth=firebase.auth();
     auth.onAuthStateChanged(u=>{
       isOwner=!!u&&u.email===window.ADMIN_EMAIL;$("admLink").textContent=(u&&!u.isAnonymous)?"خروج المدير":"المدير";document.body.classList.toggle("admin",isOwner);
       if(repUnsub){repUnsub();repUnsub=null}reports={};
       if(isOwner){repUnsub=db.collection("reports").onSnapshot(s=>{reports={};s.docs.forEach(d=>{const r=d.data();(reports[r.appId]=reports[r.appId]||[]).push(r.reason+(r.note?": "+r.note:""))});render()},()=>{})}
       render();
     });
+    try{const ch=JSON.parse(localStorage.getItem("al24apps")||"null");if(Array.isArray(ch)&&ch.length){apps=ch;render()}}catch(e){}
     db.collection("apps").onSnapshot(s=>{
       apps=s.docs.map(d=>({id:d.id,...d.data()})).filter(a=>a.name&&a.link).sort((a,b)=>(b.created||0)-(a.created||0));
+      loaded=true;
+      try{localStorage.setItem("al24apps",JSON.stringify(apps))}catch(e){}
       render();
-    },()=>{$("stat").textContent="تعذّر تحميل التطبيقات"});
+    },()=>{loaded=true;$("stat").textContent="تعذّر تحميل التطبيقات";render()});
   }catch(e){}
 })();
 render();
