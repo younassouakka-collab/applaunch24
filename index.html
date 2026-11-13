@@ -216,7 +216,7 @@ function card(a,feat){
     const f=document.createElement("button");f.textContent=a.featured?"إلغاء التمييز":"تمييز";
     f.onclick=()=>db.collection("apps").doc(a.id).update({featured:!a.featured}).catch(e=>alert("تعذّر التنفيذ: "+(e.code||"")));
     const x=document.createElement("button");x.textContent="حذف";
-    x.onclick=()=>{if(confirm("حذف هذا التطبيق؟"))db.collection("apps").doc(a.id).delete().catch(e=>alert("تعذّر الحذف: "+(e.code||"")))};
+    x.onclick=()=>{if(confirm("حذف هذا التطبيق؟")){const b=db.batch();["apps","secrets","proofs"].forEach(c=>b.delete(db.collection(c).doc(a.id)));b.commit().catch(e=>alert("تعذّر الحذف: "+(e.code||"")))}};
     const ed=document.createElement("button");ed.textContent="تعديل";ed.onclick=()=>openEdit(a);
     r.append(ed,f,x);
     const rp=reports[a.id];
