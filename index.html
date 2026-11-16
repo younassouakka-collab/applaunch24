@@ -113,6 +113,7 @@ footer{margin:30px 0 10px;text-align:center;color:var(--muted);font-size:13px}
 </div>
 <h3 class="sec">جميع التطبيقات <small id="count"></small></h3>
 <div class="grid" id="list"></div>
+<div style="text-align:center;margin:18px 0"><button class="btn" id="more" hidden>عرض المزيد</button></div>
 <div class="empty" id="empty" hidden>لا توجد تطبيقات مطابقة بعد. كن أول من يرفع تطبيقه!</div>
 <button id="gear" title="المدير" aria-label="المدير">⚙</button>
 <dialog id="loginDlg">
@@ -210,13 +211,13 @@ function card(a,feat){
   const o=document.createElement("a");o.className="btn primary";o.textContent="فتح التطبيق";o.href=safeUrl(a.link)||"#";o.target="_blank";o.rel="noopener noreferrer";
   r.appendChild(o);
   const sh=document.createElement("button");sh.textContent="مشاركة";
-  sh.onclick=async()=>{const u=safeUrl(a.link);try{if(navigator.share){await navigator.share({title:a.name,text:a.name+" – "+CONFIG.SITE_NAME,url:u})}else{await navigator.clipboard.writeText(u);sh.textContent="تم النسخ ✓"}}catch(e){}};
+  sh.onclick=async()=>{const u=location.origin+"/a/"+encodeURIComponent(a.id);try{if(navigator.share){await navigator.share({title:a.name,text:a.name+" – "+CONFIG.SITE_NAME,url:u})}else{await navigator.clipboard.writeText(u);sh.textContent="تم النسخ ✓"}}catch(e){}};
   r.appendChild(sh);
   if(isOwner){
     const f=document.createElement("button");f.textContent=a.featured?"إلغاء التمييز":"تمييز";
-    f.onclick=()=>db.collection("apps").doc(a.id).update({featured:!a.featured}).catch(e=>alert("تعذّر التنفيذ: "+(e.code||"")));
+    f.onclick=()=>db.collection("apps").doc(a.id).update({featured:!a.featured}).then(refresh).catch(e=>alert("تعذّر التنفيذ: "+(e.code||"")));
     const x=document.createElement("button");x.textContent="حذف";
-    x.onclick=()=>{if(confirm("حذف هذا التطبيق؟")){const b=db.batch();["apps","secrets","proofs"].forEach(c=>b.delete(db.collection(c).doc(a.id)));b.commit().catch(e=>alert("تعذّر الحذف: "+(e.code||"")))}};
+    x.onclick=()=>{if(confirm("حذف هذا التطبيق؟")){const b=db.batch();["apps","secrets","proofs"].forEach(c=>b.delete(db.collection(c).doc(a.id)));b.commit().then(refresh).catch(e=>alert("تعذّر الحذف: "+(e.code||"")))}};
     const ed=document.createElement("button");ed.textContent="تعديل";ed.onclick=()=>openEdit(a);
     r.append(ed,f,x);
     const rp=reports[a.id];
@@ -229,16 +230,42 @@ function card(a,feat){
   d.append(top,p,r);return d;
 }
 function render(){
-  const q=$("q").value.trim().toLowerCase(),c=$("cat").value,l=$("lang").value;
-  const all=apps.filter(a=>(!q||a.name.toLowerCase().includes(q))&&(!c||a.cat===c)&&(!l||a.lang===l));
-  const feat=all.filter(a=>a.featured);
+  const q=norm($("q").value),filt=!!(q||$("cat").value||$("lang").value);
+  const all=q?apps.filter(a=>norm(a.name).includes(q)):apps;
+  const feat=filt?[]:featApps;
+  $("more").hidden=!more;
   $("featBox").hidden=!feat.length;
   $("feat").replaceChildren(...feat.map(a=>card(a,true)));
   $("list").replaceChildren(...all.map(a=>card(a,false)));
   $("empty").hidden=all.length>0;$("empty").textContent=loaded?"لا توجد تطبيقات مطابقة بعد. كن أول من يرفع تطبيقه!":"جارٍ تحميل التطبيقات…";
-  $("count").textContent=all.length+" / "+apps.length;$("stat").textContent=apps.length?(apps.length+" تطبيق منشور حتى الآن"):"";
+  $("count").textContent=all.length+(more?"+":"");$("stat").textContent=(!filt&&apps.length)?(apps.length+(more?"+":"")+" تطبيق منشور حتى الآن"):"";
 }
-["q","cat","lang"].forEach(i=>$(i).addEventListener("input",render));
+const AR_MAP={"أ":"ا","إ":"ا","آ":"ا","ٱ":"ا","ى":"ي","ة":"ه","ؤ":"و","ئ":"ي"};
+function norm(t){return String(t||"").toLowerCase().replace(/[\u064B-\u065F\u0670\u0640]/g,"").replace(/[أإآٱىةؤئ]/g,c=>AR_MAP[c]).replace(/[^\p{L}\p{N}]+/gu," ").trim()}
+function kwOf(name){const o=new Set();norm(name).split(" ").forEach(w=>{for(let i=2;i<=Math.min(w.length,10);i++)o.add(w.slice(0,i))});return[...o].slice(0,60)}
+let featApps=[],more=false,last=null,gen=0;const PAGE=30;
+function baseQ(){
+  let q=db.collection("apps");const c=$("cat").value,l=$("lang").value,t=norm($("q").value).split(" ")[0].slice(0,10);
+  if(c)q=q.where("cat","==",c);if(l)q=q.where("lang","==",l);if(t.length>=2)q=q.where("kw","array-contains",t);
+  return(c||l||t.length>=2)?q:q.orderBy("created","desc");
+}
+async function loadPage(reset){
+  if(!db)return;const my=++gen;if(reset)last=null;
+  try{
+    let q=baseQ();if(!reset&&last)q=q.startAfter(last);
+    const sn=await q.limit(PAGE).get();if(my!==gen)return;
+    const rows=sn.docs.map(d=>({id:d.id,...d.data()})).filter(a=>a.name&&a.link).sort((a,b)=>(b.created||0)-(a.created||0));
+    if(sn.docs.length)last=sn.docs[sn.docs.length-1];more=sn.docs.length===PAGE;
+    apps=reset?rows:apps.concat(rows);loaded=true;
+    if(reset&&!$("q").value&&!$("cat").value&&!$("lang").value){try{localStorage.setItem("al24apps",JSON.stringify(apps))}catch(e){}}
+  }catch(e){if(my!==gen)return;loaded=true;$("stat").textContent="تعذّر تحميل التطبيقات"}
+  render();
+}
+async function loadFeat(){try{const sn=await db.collection("apps").where("featured","==",true).limit(12).get();featApps=sn.docs.map(d=>({id:d.id,...d.data()})).filter(a=>a.name&&a.link);render()}catch(e){}}
+function refresh(){loadPage(true);loadFeat()}
+let qT=null;$("q").addEventListener("input",()=>{clearTimeout(qT);qT=setTimeout(()=>loadPage(true),300)});
+["cat","lang"].forEach(i=>$(i).addEventListener("input",()=>loadPage(true)));
+$("more").onclick=()=>loadPage(false);
 
 function newKey(){const A="ABCDEFGHJKLMNPQRSTUVWXYZ23456789",b=new Uint8Array(16);crypto.getRandomValues(b);let k="";b.forEach(v=>k+=A[v%32]);return k}
 function myKeys(){try{return JSON.parse(localStorage.getItem("al24keys")||"{}")}catch(e){return{}}}
@@ -299,7 +326,7 @@ $("fSend").onclick=async()=>{
   if(!editId&&!$("fOwn").checked){m.textContent="يرجى تأكيد أن التطبيق مبني بواسطة AppCreator24.";return}
   $("fSend").disabled=true;
   try{
-    const data={name,link,icon:safeUrl($("fIcon").value.trim()),cat:$("fCat").value,lang:$("fLang").value,desc};
+    const data={name,link,icon:safeUrl($("fIcon").value.trim()),cat:$("fCat").value,lang:$("fLang").value,desc,kw:kwOf(name)};
     if(editId){
       if(isOwner){await db.collection("apps").doc(editId).update(data)}
       else{
@@ -308,7 +335,7 @@ $("fSend").onclick=async()=>{
         b.set(db.collection("proofs").doc(editId),{key:editKey,t:firebase.firestore.FieldValue.serverTimestamp()});
         await b.commit();saveKey(editId,editKey);
       }
-      m.textContent="تم حفظ التعديلات ✓";setTimeout(()=>$("dlg").close(),900);
+      refresh();m.textContent="تم حفظ التعديلات ✓";setTimeout(()=>$("dlg").close(),900);
     }else{
       const id="a"+Date.now().toString(36)+Math.random().toString(36).slice(2,6),key=newKey();
       const b=db.batch();
@@ -316,7 +343,7 @@ $("fSend").onclick=async()=>{
       b.set(db.collection("secrets").doc(id),{key});
       await b.commit();saveKey(id,key);
       ["fName","fLink","fIcon","fDesc"].forEach(i=>$(i).value="");$("fOwn").checked=false;
-      $("dlg").close();showCode(key);
+      refresh();$("dlg").close();showCode(key);
     }
   }catch(e){m.textContent=editId?(isOwner?"تعذّر الحفظ.":"رمز التعديل غير صحيح. (التطبيقات المنشورة قبل هذا التحديث يعدّلها المدير فقط.)"):"تعذّر النشر. حاول مرة أخرى."}
   $("fSend").disabled=false;
@@ -360,12 +387,7 @@ $("lSend").onclick=async()=>{
       render();
     });
     try{const ch=JSON.parse(localStorage.getItem("al24apps")||"null");if(Array.isArray(ch)&&ch.length){apps=ch;render()}}catch(e){}
-    db.collection("apps").onSnapshot(s=>{
-      apps=s.docs.map(d=>({id:d.id,...d.data()})).filter(a=>a.name&&a.link).sort((a,b)=>(b.created||0)-(a.created||0));
-      loaded=true;
-      try{localStorage.setItem("al24apps",JSON.stringify(apps))}catch(e){}
-      render();
-    },()=>{loaded=true;$("stat").textContent="تعذّر تحميل التطبيقات";render()});
+    refresh();
   }catch(e){}
 })();
 render();
