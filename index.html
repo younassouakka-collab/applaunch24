@@ -329,7 +329,7 @@ $("fSend").onclick=async()=>{
   $("fSend").disabled=true;
   try{
     if(!auth.currentUser)await auth.signInAnonymously();
-  }catch(e){m.textContent="تعذّر تهيئة الجلسة ("+(e.code||e.message||"خطأ")+"). أعد المحاولة.";$("fSend").disabled=false;return}
+  }catch(e){m.textContent=e.code==="auth/network-request-failed"?"تعذّر الاتصال بالإنترنت. تحقق من الشبكة ثم أعد المحاولة.":"تعذّر تهيئة الجلسة ("+(e.code||e.message||"خطأ")+"). أعد المحاولة.";$("fSend").disabled=false;return}
   try{
     const data={name,link,icon:safeUrl($("fIcon").value.trim()),cat:$("fCat").value,lang:$("fLang").value,desc,kw:kwOf(name)};
     if(editId){
