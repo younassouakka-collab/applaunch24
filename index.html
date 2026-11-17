@@ -272,9 +272,7 @@ function myKeys(){try{return JSON.parse(localStorage.getItem("al24keys")||"{}")}
 function saveKey(id,k){try{const o=myKeys();o[id]=k;localStorage.setItem("al24keys",JSON.stringify(o))}catch(e){}}
 function ownerEdit(a){
   let k=myKeys()[a.id]||prompt("أدخل رمز التعديل الخاص بتطبيقك (ظهر لك عند النشر)");
-  if(!k)return;
-  if(auth&&!auth.currentUser)auth.signInAnonymously().catch(()=>{});
-  openEdit(a,k.trim().toUpperCase());
+  if(!k)return;openEdit(a,k.trim().toUpperCase());
 }
 function showCode(k){$("cVal").value=k;$("codeDlg").showModal()}
 $("cCopy").onclick=async()=>{try{await navigator.clipboard.writeText($("cVal").value);$("cCopy").textContent="تم النسخ ✓"}catch(e){$("cVal").select()}};
@@ -327,9 +325,6 @@ $("fSend").onclick=async()=>{
   if(!CONFIG.ALLOWED_HOSTS.some(x=>h===x||h.endsWith("."+x))||!/^\/app\d+/i.test(new URL(link).pathname)){m.textContent="هذا الرابط غير مدعوم. استخدم رابط تطبيقك المباشر من AppCreator24 (يبدأ بـ appcreator24.com/app...).";return}
   if(!editId&&!$("fOwn").checked){m.textContent="يرجى تأكيد أن التطبيق مبني بواسطة AppCreator24.";return}
   $("fSend").disabled=true;
-  try{
-    if(!auth.currentUser)await auth.signInAnonymously();
-  }catch(e){m.textContent=e.code==="auth/network-request-failed"?"تعذّر الاتصال بالإنترنت. تحقق من الشبكة ثم أعد المحاولة.":"تعذّر تهيئة الجلسة ("+(e.code||e.message||"خطأ")+"). أعد المحاولة.";$("fSend").disabled=false;return}
   try{
     const data={name,link,icon:safeUrl($("fIcon").value.trim()),cat:$("fCat").value,lang:$("fLang").value,desc,kw:kwOf(name)};
     if(editId){
