@@ -71,6 +71,7 @@ dialog ul{padding-inline-start:20px;color:var(--muted);font-size:14px}
 .step span{font-size:14px;color:var(--muted)}.step span strong{display:block;color:var(--text);font-size:15px}
 .step a{color:var(--accent)}
 footer{margin:30px 0 10px;text-align:center;color:var(--muted);font-size:13px}
+[hidden]{display:none!important}
 </style>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
@@ -237,28 +238,29 @@ function render(){
   $("featBox").hidden=!feat.length;
   $("feat").replaceChildren(...feat.map(a=>card(a,true)));
   $("list").replaceChildren(...all.map(a=>card(a,false)));
-  $("empty").hidden=all.length>0;$("empty").textContent=loaded?"لا توجد تطبيقات مطابقة بعد. كن أول من يرفع تطبيقه!":"جارٍ تحميل التطبيقات…";
-  $("count").textContent=all.length+(more?"+":"");$("stat").textContent=(!filt&&apps.length)?(apps.length+(more?"+":"")+" تطبيق منشور حتى الآن"):"";
+  $("empty").hidden=all.length>0;$("empty").textContent=loaded?(loadErr?"تعذّر تحميل التطبيقات ("+loadErr+"). حدّث الصفحة بعد قليل.":"لا توجد تطبيقات مطابقة بعد. كن أول من يرفع تطبيقه!"):"جارٍ تحميل التطبيقات…";
+  $("count").textContent=all.length+(more?"+":"");$("stat").textContent=loadErr?("⚠️ تعذّر تحديث القائمة ("+loadErr+")"+(apps.length?" — المعروض نسخة محفوظة":"")):(!filt&&apps.length)?(apps.length+(more?"+":"")+" تطبيق منشور حتى الآن"):"";
 }
 const AR_MAP={"أ":"ا","إ":"ا","آ":"ا","ٱ":"ا","ى":"ي","ة":"ه","ؤ":"و","ئ":"ي"};
 function norm(t){return String(t||"").toLowerCase().replace(/[\u064B-\u065F\u0670\u0640]/g,"").replace(/[أإآٱىةؤئ]/g,c=>AR_MAP[c]).replace(/[^\p{L}\p{N}]+/gu," ").trim()}
 function kwOf(name){const o=new Set();norm(name).split(" ").forEach(w=>{for(let i=2;i<=Math.min(w.length,10);i++)o.add(w.slice(0,i))});return[...o].slice(0,60)}
-let featApps=[],more=false,last=null,gen=0;const PAGE=30;
+let featApps=[],more=false,last=null,gen=0,loadErr="";const PAGE=30;
 function baseQ(){
   let q=db.collection("apps");const c=$("cat").value,l=$("lang").value,t=norm($("q").value).split(" ")[0].slice(0,10);
   if(c)q=q.where("cat","==",c);if(l)q=q.where("lang","==",l);if(t.length>=2)q=q.where("kw","array-contains",t);
   return(c||l||t.length>=2)?q:q.orderBy("created","desc");
 }
+function withTimeout(p,ms){return Promise.race([p,new Promise((_,r)=>setTimeout(()=>r({code:"timeout"}),ms))])}
 async function loadPage(reset){
   if(!db)return;const my=++gen;if(reset)last=null;
   try{
     let q=baseQ();if(!reset&&last)q=q.startAfter(last);
-    const sn=await q.limit(PAGE).get();if(my!==gen)return;
+    const sn=await withTimeout(q.limit(PAGE).get(),15000);if(my!==gen)return;loadErr="";
     const rows=sn.docs.map(d=>({id:d.id,...d.data()})).filter(a=>a.name&&a.link).sort((a,b)=>(b.created||0)-(a.created||0));
     if(sn.docs.length)last=sn.docs[sn.docs.length-1];more=sn.docs.length===PAGE;
     apps=reset?rows:apps.concat(rows);loaded=true;
     if(reset&&!$("q").value&&!$("cat").value&&!$("lang").value){try{localStorage.setItem("al24apps",JSON.stringify(apps))}catch(e){}}
-  }catch(e){if(my!==gen)return;loaded=true;$("stat").textContent="تعذّر تحميل التطبيقات"}
+  }catch(e){if(my!==gen)return;loaded=true;loadErr=e.code||"error"}
   render();
 }
 async function loadFeat(){try{const sn=await db.collection("apps").where("featured","==",true).limit(12).get();featApps=sn.docs.map(d=>({id:d.id,...d.data()})).filter(a=>a.name&&a.link);render()}catch(e){}}
@@ -328,12 +330,12 @@ $("fSend").onclick=async()=>{
   try{
     const data={name,link,icon:safeUrl($("fIcon").value.trim()),cat:$("fCat").value,lang:$("fLang").value,desc,kw:kwOf(name)};
     if(editId){
-      if(isOwner){await db.collection("apps").doc(editId).update(data)}
+      if(isOwner){await withTimeout(db.collection("apps").doc(editId).update(data),20000)}
       else{
         const b=db.batch();
         b.update(db.collection("apps").doc(editId),data);
         b.set(db.collection("proofs").doc(editId),{key:editKey,t:firebase.firestore.FieldValue.serverTimestamp()});
-        await b.commit();saveKey(editId,editKey);
+        await withTimeout(b.commit(),20000);saveKey(editId,editKey);
       }
       refresh();m.textContent="تم حفظ التعديلات ✓";setTimeout(()=>$("dlg").close(),900);
     }else{
@@ -341,11 +343,11 @@ $("fSend").onclick=async()=>{
       const b=db.batch();
       b.set(db.collection("apps").doc(id),{...data,featured:false,created:Date.now()});
       b.set(db.collection("secrets").doc(id),{key});
-      await b.commit();saveKey(id,key);
+      await withTimeout(b.commit(),20000);saveKey(id,key);
       ["fName","fLink","fIcon","fDesc"].forEach(i=>$(i).value="");$("fOwn").checked=false;
       refresh();$("dlg").close();showCode(key);
     }
-  }catch(e){m.textContent=editId?(isOwner?"تعذّر الحفظ.":"رمز التعديل غير صحيح. (التطبيقات المنشورة قبل هذا التحديث يعدّلها المدير فقط.)"):"تعذّر النشر. حاول مرة أخرى."}
+  }catch(e){m.textContent=e.code==="timeout"?"الاتصال بطيء، وقد يكون الحفظ تم: حدّث الصفحة وتحقق قبل إعادة المحاولة.":editId?(isOwner?"تعذّر الحفظ.":"رمز التعديل غير صحيح. (التطبيقات المنشورة قبل هذا التحديث يعدّلها المدير فقط.)"):"تعذّر النشر. حاول مرة أخرى."}
   $("fSend").disabled=false;
 };
 
@@ -359,11 +361,11 @@ $("admLink").onclick=adminClick;$("gear").onclick=adminClick;
 $("lClose").onclick=()=>$("loginDlg").close();
 $("lSend").onclick=async()=>{
   const m=$("lMsg");m.textContent="جارٍ الدخول...";
-  try{await auth.signInWithEmailAndPassword($("lMail").value.trim(),$("lPass").value);$("lPass").value="";$("loginDlg").close()}
+  try{await withTimeout(auth.signInWithEmailAndPassword($("lMail").value.trim(),$("lPass").value),20000);$("lPass").value="";$("loginDlg").close()}
   catch(e){
     const c=e.code||"";
     m.textContent=c==="auth/unauthorized-domain"?"نطاق الموقع غير مضاف في Firebase (Domaines autorisés).":
-      /invalid-credential|wrong-password|user-not-found|invalid-login/.test(c)?"البريد أو كلمة المرور غير صحيحة.":"تعذّر الدخول ("+(c||"خطأ")+").";
+      c==="timeout"?"انتهت المهلة: الاتصال بـ Firebase بطيء أو محجوب (App Check أو الشبكة).":/invalid-credential|wrong-password|user-not-found|invalid-login/.test(c)?"البريد أو كلمة المرور غير صحيحة.":"تعذّر الدخول ("+(c||"خطأ")+").";
   }
 };
 (function(){
@@ -375,7 +377,7 @@ $("lSend").onclick=async()=>{
     if(window.APPCHECK_SITE_KEY&&firebase.appCheck){
       try{
         const ac=firebase.appCheck();
-        ac.activate(new firebase.appCheck.ReCaptchaEnterpriseProvider(window.APPCHECK_SITE_KEY),true);
+        ac.activate(new firebase.appCheck.ReCaptchaV3Provider(window.APPCHECK_SITE_KEY),true);
         if(acDbg)ac.getToken(true).then(()=>alert("App Check: تم الحصول على الرمز ✓")).catch(e=>alert("App Check خطأ: "+(e.code||e.message||e)));
       }catch(e){if(acDbg)alert("App Check تعذّر التفعيل: "+(e.code||e.message||e))}
     }else if(acDbg){alert("App Check غير مفعّل: "+(window.APPCHECK_SITE_KEY?"مكتبة AppCheck غير محمّلة":"APPCHECK_SITE_KEY غير موجود في firebase-config.js"))}
