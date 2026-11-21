@@ -377,8 +377,8 @@ $("lSend").onclick=async()=>{
     if(window.APPCHECK_SITE_KEY&&firebase.appCheck){
       try{
         const ac=firebase.appCheck();
-        ac.activate(new firebase.appCheck.ReCaptchaV3Provider(window.APPCHECK_SITE_KEY),true);
-        if(acDbg)ac.getToken(true).then(()=>alert("App Check: تم الحصول على الرمز ✓")).catch(e=>alert("App Check خطأ: "+(e.code||e.message||e)));
+        ac.activate(new firebase.appCheck.ReCaptchaEnterpriseProvider(window.APPCHECK_SITE_KEY),!acDbg);
+        if(acDbg)ac.getToken(true).then(()=>alert("App Check: تم الحصول على الرمز ✓")).catch(e=>alert("App Check خطأ: "+(e.code||"")+"\n"+(e.message||e)));
       }catch(e){if(acDbg)alert("App Check تعذّر التفعيل: "+(e.code||e.message||e))}
     }else if(acDbg){alert("App Check غير مفعّل: "+(window.APPCHECK_SITE_KEY?"مكتبة AppCheck غير محمّلة":"APPCHECK_SITE_KEY غير موجود في firebase-config.js"))}
     db=firebase.firestore();try{db.settings({experimentalAutoDetectLongPolling:true,merge:true})}catch(e){}auth=firebase.auth();
